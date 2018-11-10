@@ -3,27 +3,28 @@
 namespace App\Nova;
 
 use Laravel\Nova\Fields\ID;
-use Illuminate\Http\Request;
 use Laravel\Nova\Fields\Text;
-use Laravel\Nova\Fields\Gravatar;
+use Laravel\Nova\Fields\Select;
 use Laravel\Nova\Fields\HasMany;
-use Laravel\Nova\Fields\Password;
+use Illuminate\Http\Request;
+use Laravel\Nova\Http\Requests\NovaRequest;
+use Actionable;
 
-class User extends Resource
+class Lead extends Resource
 {
     /**
      * The model the resource corresponds to.
      *
      * @var string
      */
-    public static $model = 'App\\User';
+    public static $model = 'App\Lead';
 
     /**
      * The single value that should be used to represent the resource when being displayed.
      *
      * @var string
      */
-    public static $title = 'name';
+    public static $title = 'full_name';
 
     /**
      * The columns that should be searched.
@@ -31,7 +32,9 @@ class User extends Resource
      * @var array
      */
     public static $search = [
-        'id', 'name', 'email',
+        'id',
+        'full_name',
+        'email',
     ];
 
     /**
@@ -44,25 +47,29 @@ class User extends Resource
     {
         return [
             ID::make()->sortable(),
-    
-            Gravatar::make(),
-    
-            Text::make('Name')
+            Text::make('Full Name')
+                ->exceptOnForms()
+                ->sortable(),
+            Select::make('Status')
+                ->options(\App\Lead::getStatuses())
                 ->sortable()
-                ->rules('required', 'max:255'),
-    
+                ->rules('required', 'string'),
+            Select::make('Type')
+                ->options(\App\Lead::getTypes())
+                ->sortable()
+                ->rules('required', 'string'),
+            Text::make('First Name')
+                ->onlyOnForms()
+                ->rules('required', 'string'),
+            Text::make('Last Name')
+                ->onlyOnForms()
+                ->rules('required', 'string'),
             Text::make('Email')
                 ->sortable()
-                ->rules('required', 'email', 'max:255')
-                ->creationRules('unique:users,email')
-                ->updateRules('unique:users,email,{{resourceId}}'),
-    
-            Password::make('Password')
-                ->onlyOnForms()
-                ->creationRules('required', 'string', 'min:6')
-                ->updateRules('nullable', 'string', 'min:6'),
-    
-            HasMany::make('Notes')
+                ->rules('required', 'email')
+                ->creationRules('unique:leads,email')
+                ->updateRules('unique:leads,email,{{resourceId}}'),
+            HasMany::make('Notes'),
         ];
     }
 
@@ -74,7 +81,11 @@ class User extends Resource
      */
     public function cards(Request $request)
     {
-        return [];
+        return [
+            (new Metrics\LeadsPerDay)->width('1/3'),
+            (new Metrics\NewLeads)->width('1/3'),
+            (new Metrics\LeadsPerStatus)->width('1/3'),
+        ];
     }
 
     /**
@@ -85,7 +96,10 @@ class User extends Resource
      */
     public function filters(Request $request)
     {
-        return [];
+        return [
+            new Filters\LeadStatus,
+            new Filters\LeadType,
+        ];
     }
 
     /**
@@ -96,7 +110,9 @@ class User extends Resource
      */
     public function lenses(Request $request)
     {
-        return [];
+        return [
+            new Lenses\TimeIntensiveLeads,
+        ];
     }
 
     /**

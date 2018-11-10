@@ -11,5 +11,9 @@
 |
 */
 
-Route::get('/', 'PostController@index');
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::post('/form-submit', 'LeadController@store');
 Route::get('/posts/{post}', 'PostController@show');
